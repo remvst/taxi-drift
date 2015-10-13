@@ -705,6 +705,16 @@ World.prototype = {
 			this.buildings[i].render();
 		}
 
+		// NEW: decrease turboTank if turboMode on
+		if (this.player.turbo) {
+			this.player.turboTank--;
+			if(this.player.turboTank <= 0){
+				this.player.turboTank;
+				this.player.turbo = false;
+			}
+		}
+
+
 		this.player.render2();
 
 		rs();
@@ -736,6 +746,7 @@ World.prototype = {
 		this.player.rotationDir = 0;
 		this.player.accelerates = false;
 		this.player.brakes = false;
+		this.player.turbo = false; // NEW
 		if(this.down[37]){
 			this.player.rotationDir = -1;
 		}
@@ -747,6 +758,10 @@ World.prototype = {
 		}
 		if(this.down[40]){
 			this.player.brakes = true;
+		}
+		if(this.down[17]){ // NEW: enable turbo mode
+			if (this.player.turboTank > 0)
+				this.player.turbo =  true;
 		}
 		if(this.down[32]){
 			G.start();
@@ -880,6 +895,11 @@ Home.prototype = xt(Menu.prototype, {
 		w = textWidth(t, .5);
 		drawText(c, t, 'white', (P.w - w) / 2, 450, .5, 1);
 
+		t = 'press ctrl for turbo boost';
+		w = textWidth(t, .5);
+		drawText(c, t, 'white', (P.w - w) / 2, 500, .5, 1);
+
+
 		alpha(1);
 	},
 	keyDown: function(k){
@@ -931,14 +951,17 @@ function Car(){
 	this.rotationDir = 0;
 	this.vectors = [];
 	this.accelerates = false;
+	this.turbo = false;
 	this.brakes = false;
-	this.maxSpeed = 500;
+	this.maxSpeed = 400;
+	this.turboTank = 100; // NEW: define a turbo tank
+	this.turboTankFull = 100; // NEW: define a turbo tank
 	this.drifts = true;
 
 	this.t = 0;
 
 	this.maxAcceleration = 400;
-	this.maxDeceleration = 100000;
+	this.maxDeceleration = 100000; // ??
 	this.maxDeceleration = 400;
 
 	this.speedVector = {};
@@ -1005,6 +1028,8 @@ Car.prototype = {
 		// Turning "opposition"
 		var opposition = abs(normalizeAngle(this.rotation - this.moveAngle)) / M.PI;
 		this.speed = limit(this.speed - opposition * e * this.maxDeceleration * 2, -this.maxSpeed, this.maxSpeed);
+
+		this.speed = (this.turbo) ? this.speed + 500 : this.speed; // NEW: Turbo mode (CTRL)
 	},
 	render: function(){
 		sv();
@@ -1079,7 +1104,7 @@ Player.prototype = xt(Car.prototype, {
 			this.nextGoodPositionTimer = .1;
 		}
 
-		if(this.accelerates && this.speed < 400 || this.brakes && this.speed > -200
+		if(this.accelerates && this.speed < 400 || this.brakes && this.speed > -200 || this.turbo // NEW: enable drift with turbo
 			|| abs(this.speed) > 20 && abs(normalizeAngle(this.rotation - this.moveAngle)) > Math.PI / 8){
 
 			var posOnLine = -this.l / 2;
@@ -1145,6 +1170,8 @@ Player.prototype = xt(Car.prototype, {
 			var d = dist(this.x, this.y, this.clientSettings.destination.x, this.clientSettings.destination.y);
 			if(d < this.clientSettings.radius){
 				if(this.speed === 0){
+					// NEW: refill turbo when client pays
+					this.turboTank = (this.turboTank <= this.turboTankFull - 10 ) ? this.turboTank + 10 : this.turboTankFull;
 					this.drop();
 				}
 			}else{
@@ -1429,6 +1456,10 @@ HUD.prototype = {
 		w = textWidth(m, .5)
 		drawText(c, m, 'white', P.w - w - 20, 20, .5, 1);
 
+		// NEW: turbo tank counter
+		m = 'turbo: ' + wld.player.turboTank;
+		w = textWidth(m, .5)
+		drawText(c, m, 'white', P.w - w - 20, 60, .5, 1);
 
 		drawText(c, 'cars: ' + wld.player.lives, 'white', 20, 20, .5, 1);
 
@@ -2074,7 +2105,7 @@ arrow = cache(40, 40, function(c, r){
 		tr(-c.width / 2, -c.height / 2);
 		tr(0, c.height);
 		sc(1, -1);
-		fs('#fff');
+		fs('#f00'); // OLD #fff
 		bp();
 		mt(20, 40);
 		lt(40, 20);
